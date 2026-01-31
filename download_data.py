@@ -9,7 +9,7 @@ from src.utils import setup_logging, ensure_dir
 
 logger = setup_logging()
 
-def download_tcia_data(collection="NSCLC-Radiogenomics", output_dir="data/raw"):
+def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw"):
     """
     Downloads the NSCLC-Radiogenomics dataset from TCIA using tcia_utils.
     Note: Requires 'tcia-utils' package.
@@ -21,30 +21,35 @@ def download_tcia_data(collection="NSCLC-Radiogenomics", output_dir="data/raw"):
         return
 
     ensure_dir(output_dir)
-    pass
-    logger.info(f"Starting download for collection: {collection}")
     
-    # Get series info
-    try:
-        series_data = nbia.getSeries(collection=collection)
-        if not series_data:
-            logger.error("No series found. Check collection name or internet connection.")
-            return
+    # Try the provided name, and then try common variations if it fails
+    variations = [collection]
+    if "-" in collection:
+        variations.append(collection.replace("-", " "))
+    elif " " in collection:
+        variations.append(collection.replace(" ", "-"))
+        
+    series_data = None
+    for coll_name in variations:
+        logger.info(f"Checking for collection: {coll_name}")
+        try:
+            series_data = nbia.getSeries(collection=coll_name)
+            if series_data and len(series_data) > 0:
+                logger.info(f"Found {len(series_data)} series for '{coll_name}'.")
+                break
+        except Exception as e:
+            logger.debug(f"Failed attempt for {coll_name}: {e}")
             
-        logger.info(f"Found {len(series_data)} series. Downloading...")
+    if not series_data:
+        logger.error(f"No series found for any variation of '{collection}'. Check internet connection or TCIA status.")
+        return
         
+    logger.info(f"Starting download...")
+    
+    try:
         # Download series
-        # input_type="list" expects a list of SeriesInstanceUIDs or a dataframe
-        # getSeries returns a list of dictionaries.
-        
-        # We can pass the dataframe directly if we convert it, 
-        # or tcia_utils might handle the list of dicts or we extract SeriesInstanceUID.
-        
-        # Let's extract dataframe to be safe and use native download
         df = pd.DataFrame(series_data)
         
-        # Filter for CT only if needed, but radiogenomics usually has the relevant ones.
-        # The dataset description says "CT scans", so we might want to filter Modality=='CT'.
         if 'Modality' in df.columns:
             ct_series = df[df['Modality'] == 'CT']
             logger.info(f"Filtered to {len(ct_series)} CT series.")
