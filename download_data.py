@@ -9,7 +9,7 @@ from src.utils import setup_logging, ensure_dir
 
 logger = setup_logging()
 
-def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw"):
+def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw", limit=None):
     """
     Downloads the NSCLC-Radiogenomics dataset from TCIA using tcia_utils.
     Note: Requires 'tcia-utils' package.
@@ -64,6 +64,10 @@ def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw"):
         # Extract SeriesInstanceUIDs as a list (more robust for tcia_utils)
         uids = ct_series['SeriesInstanceUID'].tolist()
         
+        if limit and limit > 0:
+            logger.info(f"Limiting download to the first {limit} series.")
+            uids = uids[:limit]
+        
         logger.info(f"Downloading {len(uids)} series to {output_dir}...")
         
         # Using input_type="list" is usually more reliable across tcia-utils versions
@@ -79,9 +83,10 @@ def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw"):
 def main():
     parser = argparse.ArgumentParser(description="Download NSCLC-Radiogenomics Data")
     parser.add_argument("--output_dir", type=str, default="data/raw", help="Output directory")
+    parser.add_argument("--limit", type=int, default=None, help="Limit the number of series to download")
     args = parser.parse_args()
     
-    download_tcia_data(output_dir=args.output_dir)
+    download_tcia_data(output_dir=args.output_dir, limit=args.limit)
 
 if __name__ == "__main__":
     main()
