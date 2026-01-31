@@ -47,21 +47,34 @@ def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw"):
     logger.info(f"Starting download...")
     
     try:
-        # Download series
+        # Create DataFrame from series info
         df = pd.DataFrame(series_data)
         
+        # Filter for CT scans only
         if 'Modality' in df.columns:
             ct_series = df[df['Modality'] == 'CT']
             logger.info(f"Filtered to {len(ct_series)} CT series.")
         else:
             ct_series = df
             
-        nbia.downloadSeries(series_data=ct_series, path=output_dir, input_type="pandas")
+        if ct_series.empty:
+            logger.error("No CT series found in this collection.")
+            return
+
+        # Extract SeriesInstanceUIDs as a list (more robust for tcia_utils)
+        uids = ct_series['SeriesInstanceUID'].tolist()
+        
+        logger.info(f"Downloading {len(uids)} series to {output_dir}...")
+        
+        # Using input_type="list" is usually more reliable across tcia-utils versions
+        nbia.downloadSeries(uids, path=output_dir, input_type="list")
         
         logger.info("Download completed.")
         
     except Exception as e:
         logger.error(f"Download failed: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 def main():
     parser = argparse.ArgumentParser(description="Download NSCLC-Radiogenomics Data")
