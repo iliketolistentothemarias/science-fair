@@ -62,16 +62,25 @@ def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw", 
             logger.error("No CT or SEG series found in this collection.")
             return
 
-        # Extract SeriesInstanceUIDs as a list
-        uids = filtered_series['SeriesInstanceUID'].tolist()
-        
         if limit and limit > 0:
-            # We want to make sure we get pairs if possible, but for a trial, 
-            # just taking the first N is okay. 
-            # Better: if limit is 20, we take 20 CTs and their matching SEGs if we can find them.
-            # For simplicity, let's just take the first N series.
-            logger.info(f"Limiting download to the first {limit} series.")
-            uids = uids[:limit]
+            # Group by PatientID to ensure we get CT/SEG pairs
+            ct_series_df = filtered_series[filtered_series['Modality'] == 'CT']
+            seg_series_df = filtered_series[filtered_series['Modality'] == 'SEG']
+            
+            # Find unique patients that have CTs
+            unique_patients = ct_series_df['PatientID'].unique()
+            # Take the first N patients based on limit
+            selected_patients = unique_patients[:limit]
+            
+            logger.info(f"Limiting download to first {len(selected_patients)} patients (searching for CT/SEG pairs).")
+            
+            uids = []
+            for pid in selected_patients:
+                uids.extend(ct_series_df[ct_series_df['PatientID'] == pid]['SeriesInstanceUID'].tolist())
+                uids.extend(seg_series_df[seg_series_df['PatientID'] == pid]['SeriesInstanceUID'].tolist())
+        else:
+            # Extract SeriesInstanceUIDs as a list
+            uids = filtered_series['SeriesInstanceUID'].tolist()
         
         logger.info(f"Downloading {len(uids)} series to {output_dir}...")
         
