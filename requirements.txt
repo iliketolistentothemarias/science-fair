@@ -1,0 +1,12 @@
+numpy
+pandas
+scikit-learn
+xgboost
+SimpleITK
+nibabel
+pyradiomics
+torch
+torchvision
+tqdm
+pydicom
+tcia-utils
