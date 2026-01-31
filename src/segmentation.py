@@ -50,11 +50,32 @@ def generate_peritumoral_region(tumor_mask, dilation_radius_mm=2.0):
 
 def process_rois(mask_path, output_dir, patient_id):
     """
-    Loads a mask, generates the peritumoral region, and saves both.
+    Loads a mask, ensures it matches the processed image spacing,
+    generates the peritumoral region, and saves both.
     """
     try:
         mask = sitk.ReadImage(mask_path)
         
+        # We assume the processed image is in data/processed/{patient_id}.nii.gz
+        # The experiment script should ensure this exists.
+        # We need it to match spacing/size.
+        processed_img_path = os.path.join(os.path.dirname(output_dir), "processed", f"{patient_id}.nii.gz")
+        
+        if os.path.exists(processed_img_path):
+            ref_image = sitk.ReadImage(processed_img_path)
+            
+            # Resample mask to match reference image (CT)
+            resample = sitk.ResampleImageFilter()
+            resample.SetReferenceImage(ref_image)
+            resample.SetInterpolator(sitk.sitkNearestNeighbor) # Crucial for masks
+            resample.SetDefaultPixelValue(0)
+            
+            mask = resample.Execute(mask)
+            # Overwrite original with resampled for consistency
+            sitk.WriteImage(mask, mask_path)
+        else:
+            logger.warning(f"No processed image found for {patient_id} at {processed_img_path}. Spacing might be inconsistent.")
+
         # Ensure it's 3D
         if mask.GetDimension() != 3:
             logger.error(f"Mask for {patient_id} is not 3D.")

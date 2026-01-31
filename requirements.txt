@@ -10,3 +10,4 @@ torchvision
 tqdm
 pydicom
 tcia-utils
+pydicom-seg

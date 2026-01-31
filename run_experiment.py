@@ -2,6 +2,7 @@ import argparse
 import os
 import sys
 from src.preprocessing import run_preprocessing
+from src.data_handler import discover_and_convert_rois
 from src.segmentation import process_rois
 from src.radiomics_features import process_batch_radiomics
 from src.deep_features import process_batch_deep
@@ -27,6 +28,9 @@ def main():
     processed_dir = os.path.join(args.data_dir, "processed")
     rois_dir = os.path.join(args.data_dir, "rois")
     features_dir = os.path.join(args.data_dir, "features")
+    
+    ensure_dir(processed_dir)
+    ensure_dir(rois_dir)
     ensure_dir(features_dir)
     
     radiomics_csv = os.path.join(features_dir, "radiomics.csv")
@@ -37,18 +41,25 @@ def main():
         run_preprocessing(raw_dir, processed_dir)
         
     if args.run_all or args.segment:
-        logger.info("Starting ROI Generation...")
-        # Iterating over processed files to generate peritumoral from corresponding tumor masks
-        # Assuming we have tumor masks in rois_dir named {PatientID}_tumor.nii.gz
-        # And processed images in processed_dir named {PatientID}.nii.gz
+        logger.info("Starting ROI Generation Stage...")
         
-        # User needs to provide tumor masks in rois_dir first!
-        # We process them to create peritumoral.
+        # 1. Look for expert segmentations in raw data and convert them
+        discover_and_convert_rois(raw_dir, rois_dir)
+        
+        # 2. Process existing tumor masks to generate peritumoral regions
         masks = [f for f in os.listdir(rois_dir) if f.endswith('_tumor.nii.gz')]
+        if not masks:
+            logger.warning(f"No tumor masks found in {rois_dir}. Make sure expert segmentations were downloaded.")
+        
         for m in masks:
             pid = m.replace('_tumor.nii.gz', '')
             mask_path = os.path.join(rois_dir, m)
-            process_rois(mask_path, rois_dir, pid)
+            # We also need the processed image to ensure spacing matches
+            img_path = os.path.join(processed_dir, f"{pid}.nii.gz")
+            if os.path.exists(img_path):
+                process_rois(mask_path, rois_dir, pid)
+            else:
+                logger.warning(f"Skipping ROI generation for {pid} because processed image is missing.")
             
     if args.run_all or args.extract_radiomics:
         logger.info("Starting Radiomics Extraction...")

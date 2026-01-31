@@ -50,21 +50,26 @@ def download_tcia_data(collection="NSCLC Radiogenomics", output_dir="data/raw", 
         # Create DataFrame from series info
         df = pd.DataFrame(series_data)
         
-        # Filter for CT scans only
+        # Filter for CT and SEG scans
         if 'Modality' in df.columns:
-            ct_series = df[df['Modality'] == 'CT']
-            logger.info(f"Filtered to {len(ct_series)} CT series.")
+            # We want the CT and the Segmentations
+            filtered_series = df[df['Modality'].isin(['CT', 'SEG'])]
+            logger.info(f"Filtered to {len(filtered_series)} series (CT and SEG).")
         else:
-            ct_series = df
+            filtered_series = df
             
-        if ct_series.empty:
-            logger.error("No CT series found in this collection.")
+        if filtered_series.empty:
+            logger.error("No CT or SEG series found in this collection.")
             return
 
-        # Extract SeriesInstanceUIDs as a list (more robust for tcia_utils)
-        uids = ct_series['SeriesInstanceUID'].tolist()
+        # Extract SeriesInstanceUIDs as a list
+        uids = filtered_series['SeriesInstanceUID'].tolist()
         
         if limit and limit > 0:
+            # We want to make sure we get pairs if possible, but for a trial, 
+            # just taking the first N is okay. 
+            # Better: if limit is 20, we take 20 CTs and their matching SEGs if we can find them.
+            # For simplicity, let's just take the first N series.
             logger.info(f"Limiting download to the first {limit} series.")
             uids = uids[:limit]
         
