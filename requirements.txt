@@ -4,7 +4,7 @@ scikit-learn
 xgboost
 SimpleITK
 nibabel
-pyradiomics
+git+https://github.com/AIM-Harvard/pyradiomics
 torch
 torchvision
 tqdm
