@@ -8,6 +8,6 @@ pyradiomics
 torch
 torchvision
 tqdm
-pydicom
+pydicom<3.0.0
 tcia-utils
 pydicom-seg
